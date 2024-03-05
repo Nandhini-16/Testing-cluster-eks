@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-test
+  namespace: sample
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: cloud-test
+  template:
+    metadata:
+      labels:
+        app: cloud-test
+    spec:
+      containers:
+      - name: cloud-test
+        image: containerregprojectx.azurecr.io/cloud-test:3
+        resources:
+          limits:
+            memory: "4Gi"   # Increase the memory limit to 4Gi
+            cpu: "500m"
+          requests:
+            memory: "2Gi"   # Adjust the memory request to 2Gi
+            cpu: "500m"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          protocol: TCP
+      imagePullSecrets:
+      - name: eks-cluster
