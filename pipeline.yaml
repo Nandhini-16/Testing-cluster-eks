@@ -1,0 +1,67 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: Docker_Build
+  displayName: 'Docker Build'
+  jobs:
+  - job: Docker_Build
+    displayName: 'Docker Build'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '3.x'
+
+    - script: |
+        # Build and push Docker image
+        docker build -t  $(dockerHubUsername)/my-app:latest .
+        docker login -u $(dockerHubUsername) -p $(dockerHubPassword)
+        docker push  $(dockerHubUsername)/my-app:latest
+      displayName: 'Build and Push Docker Image'
+
+- stage: Terraform
+  displayName: Terraform
+  jobs:
+  - job: Install_Terraform
+    displayName: Install Terraform
+    steps:
+    - task: TerraformInstaller@1
+      displayName: terraform install
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformTaskV4@4
+      displayName: terraform Init
+      inputs:
+        provider: 'aws'
+        command: 'init'
+        backendServiceAWS: 'Terraform-AWS-Connection'
+        backendAWSBucketName: 'terraform-bucket-demo-001'
+        backendAWSKey: 'terraform.tfstate'
+    - task: TerraformTaskV4@4
+      displayName: terraform plan 
+      inputs:
+        provider: 'aws'
+        command: 'plan'
+        backendServiceAWS: 'Terraform-AWS-Connection'
+        backendAWSBucketName: 'terraform-bucket-demo-001'
+        backendAWSKey: 'terraform.tfstate'
+        environmentServiceNameAWS: Terraform-AWS-Connection
+    - task: TerraformTaskV4@4
+      displayName: terraform Apply
+      inputs:
+        provider: 'aws'
+        command: 'apply'
+        backendServiceAWS: 'Terraform-AWS-Connection'
+        backendAWSBucketName: 'terraform-bucket-demo-001'
+        backendAWSKey: 'terraform.tfstate'
+        environmentServiceNameAWS: Terraform-AWS-Connection
