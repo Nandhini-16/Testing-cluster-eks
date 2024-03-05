@@ -1,15 +1,15 @@
 provider "aws" {
-  region = "us-east-1"
+  region = "us-east-2"
 }
 
 module "eks" {
   source = "./cluster/"
   network = ({
-    node_subnet_id_1 = "subnet-06639878fce5acaa7"
-    node_subnet_id_2 = "subnet-0db9b9481b4ce4afa"
+    node_subnet_id_1 = "subnet-03386e05568547fec"
+    node_subnet_id_2 = "subnet-0d6f9d66cd2094e22"
   })
   eks = ({
-    eks_cluster_name               = "demo-cluster-1"
+    eks_cluster_name               = "test-cluster-1"
     eks_cluster_version            = "1.29"
   })
   required_addons = ({
@@ -17,12 +17,12 @@ module "eks" {
     kube_proxy_minor_version = "eksbuild.1"
     vpc_cni_major_version    = "v1.15.4"
     vpc_cni_minor_version    = "eksbuild.1"
-    addon_region             = "us-east-1"
+    addon_region             = "us-east-2"
   })
   tags = {
-    "kubernetes.io/cluster/demo-cluster" = "owned"
-    "Name"                                 = "demo-cluster-eks-cluster-sg"
-    "aws:eks:cluster-name"                 = "demo-cluster"
+    "kubernetes.io/cluster/test-cluster-1" = "owned"
+    "Name"                                 = "test-cluster-1-eks-cluster-sg"
+    "aws:eks:cluster-name"                 = "test-cluster-1"
   }
 }
 
@@ -42,19 +42,19 @@ data "aws_eks_cluster_auth" "eks_cluster_auth" {
 module "eks-nodes" {
   source = "./nodes"
   network = ({
-    node_subnet_id_1 = "subnet-06639878fce5acaa7"
-    node_subnet_id_2 = "subnet-0db9b9481b4ce4afa"
+    node_subnet_id_1 = "subnet-03386e05568547fec"
+    node_subnet_id_2 = "subnet-0d6f9d66cd2094e22"
   })
   eks = ({
     cluster_name          = module.eks.eks_cluster_name
     ebs_csi_addon_version = "v1.25.0-eksbuild.1"
     coredns_addon_version = "v1.10.1-eksbuild.6"
-    node_ami_id           = "ami-0440d3b780d96b29d"
+    node_ami_id           = "ami-0f5daaa3a7fb3378b"
   })
   tags = {
-    "kubernetes.io/cluster/demo-cluster" = "owned"
-    "Name"                                 = "demo-cluster-eks-cluster-sg"
-    "aws:eks:cluster-name"                 = "demo-cluster"
+    "kubernetes.io/cluster/tesr-cluster-1" = "owned"
+    "Name"                                 = "test-cluster-1-eks-cluster-sg"
+    "aws:eks:cluster-name"                 = "test-cluster-1"
   }
   node_groups = {
     template1 = {
@@ -75,75 +75,6 @@ module "eks-nodes" {
     #   maximum_size          = 3
     #   minimum_size          = 1
     # }
-  }
-}
-
-provider "kubernetes" {
-  host                   = module.eks-nodes.eks_cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks-nodes.eks_cluster_certificate_authority_data)
-  token                  = module.eks-nodes.eks_cluster_token
-}
-
-provider "helm" {
-  kubernetes {
-    host                   = module.eks-nodes.eks_cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks-nodes.eks_cluster_certificate_authority_data)
-    token                  = module.eks-nodes.eks_cluster_token
-  }
-}
-
-resource "kubernetes_namespace" "sample-nodejs" {
-  metadata {
-    name = "my-app"
-  }
-}
-
-resource "kubernetes_deployment" "sample-nodejs" {
-  metadata {
-    name      = "my-app"
-    namespace = kubernetes_namespace.sample-nodejs.metadata.0.name
-  }
-  spec {
-    replicas = 1
-    selector {
-      match_labels = {
-        app = "my-app"
-      }
-    }
-    template {
-      metadata {
-        labels = {
-          app = "my-app"
-        }
-      }
-      spec {
-        container {
-          image = "dhiva007/my-app:latest"
-          name  = "my-app"
-          port {
-            container_port = 5000
-          }
-
-        }
-      }
-    }
-  }
-}
-
-resource "kubernetes_service" "sample-nodejs" {
-  metadata {
-    name      = "my-app"
-    namespace = kubernetes_namespace.sample-nodejs.metadata.0.name
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.sample-nodejs.spec.0.template.0.metadata.0.labels.app
-    }
-    type = "LoadBalancer"
-    port {
-      port        = 80
-      target_port = 5000
-    }
   }
 }
 
